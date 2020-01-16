@@ -18,11 +18,14 @@ const (
 // It can connect to multi-server and grab jobs.
 type Worker struct {
 	sync.Mutex
-	agents  []*agent
-	funcs   jobFuncs
-	in      chan *inPack
-	running bool
-	ready   bool
+	agents                     []*agent
+	agentConnectTimeOut        time.Duration
+	agentAutoReconnect         bool
+	agentAutoReconnectWaitTime time.Duration //自动重启等待时间
+	funcs                      jobFuncs
+	in                         chan *inPack
+	running                    bool
+	ready                      bool
 
 	Id           string
 	ErrorHandler ErrorHandler
@@ -39,14 +42,28 @@ type Worker struct {
 // OneByOne(=1), there will be only one job executed in a time.
 func New(limit int) (worker *Worker) {
 	worker = &Worker{
-		agents: make([]*agent, 0, limit),
-		funcs:  make(jobFuncs),
-		in:     make(chan *inPack, queueSize),
+		agents:                     make([]*agent, 0, limit),
+		funcs:                      make(jobFuncs),
+		in:                         make(chan *inPack, queueSize),
+		agentConnectTimeOut:        time.Second * 10,
+		agentAutoReconnectWaitTime: time.Second * 10,
 	}
 	if limit != Unlimited {
 		worker.limit = make(chan bool, limit-1)
 	}
 	return
+}
+
+func (worker *Worker) SetAgentConnectTimeOut(t time.Duration) {
+	worker.agentConnectTimeOut = t
+}
+
+func (worker *Worker) SetAgentAutoReconnectWaitTime(t time.Duration) {
+	worker.agentAutoReconnectWaitTime = t
+}
+
+func (worker *Worker) SetAgentAutoReconnect(b bool) {
+	worker.agentAutoReconnect = b
 }
 
 // inner error handling

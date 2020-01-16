@@ -4,19 +4,22 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"github.com/sirupsen/logrus"
 	"io"
 	"net"
 	"sync"
+	"time"
 )
 
 // The agent of job server.
 type agent struct {
 	sync.Mutex
-	conn      net.Conn
-	rw        *bufio.ReadWriter
-	worker    *Worker
-	in        chan []byte
-	net, addr string
+	conn         net.Conn
+	rw           *bufio.ReadWriter
+	worker       *Worker
+	in           chan []byte
+	net, addr    string
+	ErrorHandler ErrorHandler
 }
 
 // Create the agent of job server.
@@ -33,7 +36,7 @@ func newAgent(net, addr string, worker *Worker) (a *agent, err error) {
 func (a *agent) Connect() (err error) {
 	a.Lock()
 	defer a.Unlock()
-	a.conn, err = net.Dial(a.net, a.addr)
+	a.conn, err = net.DialTimeout(a.net, a.addr, a.worker.agentConnectTimeOut)
 	if err != nil {
 		return
 	}
@@ -60,22 +63,30 @@ func (a *agent) work() {
 				if opErr.Temporary() {
 					continue
 				} else {
+					logrus.WithError(err).Error("a.disconnect_error(err)")
 					a.disconnect_error(err)
 					// else - we're probably dc'ing due to a Close()
-
+					if a.worker.agentAutoReconnect {
+						time.Sleep(a.worker.agentAutoReconnectWaitTime)
+					} else {
+						break
+					}
+				}
+			} else if err == io.EOF {
+				logrus.WithError(err).Error("a.disconnect_error(err)")
+				a.disconnect_error(err)
+				if a.worker.agentAutoReconnect {
+					time.Sleep(a.worker.agentAutoReconnectWaitTime)
+				} else {
 					break
 				}
-
-			} else if err == io.EOF {
-				a.disconnect_error(err)
-				break
 			}
 			a.worker.err(err)
 			// If it is unexpected error and the connection wasn't
 			// closed by Gearmand, the agent should close the conection
 			// and reconnect to job server.
 			a.Close()
-			a.conn, err = net.Dial(a.net, a.addr)
+			a.conn, err = net.DialTimeout(a.net, a.addr, a.worker.agentConnectTimeOut)
 			if err != nil {
 				a.worker.err(err)
 				break
@@ -106,6 +117,16 @@ func (a *agent) work() {
 					data = data[l:]
 				}
 			}
+		}
+	}
+	logrus.Warn("Start del agent")
+	a.Lock()
+	defer a.Unlock()
+	for i, _ := range a.worker.agents {
+		if a.worker.agents[i] == a {
+			a.worker.agents = append(a.worker.agents[:i], a.worker.agents[i+1:]...)
+			logrus.Warn("End del agent")
+			return
 		}
 	}
 }
