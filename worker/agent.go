@@ -63,7 +63,7 @@ func (a *agent) work() {
 				if opErr.Temporary() {
 					continue
 				} else {
-					logrus.WithError(err).Error("a.disconnect_error(err)")
+					logrus.WithError(err).Debug("a.disconnect_error(err)")
 					a.disconnect_error(err)
 					// else - we're probably dc'ing due to a Close()
 					if a.worker.agentAutoReconnect {
@@ -73,7 +73,7 @@ func (a *agent) work() {
 					}
 				}
 			} else if err == io.EOF {
-				logrus.WithError(err).Error("a.disconnect_error(err)")
+				logrus.WithError(err).Debug("a.disconnect_error(err)")
 				a.disconnect_error(err)
 				if a.worker.agentAutoReconnect {
 					time.Sleep(a.worker.agentAutoReconnectWaitTime)
