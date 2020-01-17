@@ -63,20 +63,34 @@ func (a *agent) work() {
 				if opErr.Temporary() {
 					continue
 				} else {
-					logrus.WithError(err).Debug("a.disconnect_error(err)")
+					logrus.WithError(err).Debug("a.disconnect_error(err)1")
 					a.disconnect_error(err)
 					// else - we're probably dc'ing due to a Close()
 					if a.worker.agentAutoReconnect {
 						time.Sleep(a.worker.agentAutoReconnectWaitTime)
+						err = a.reconnect()
+						if err != nil {
+							logrus.WithError(err).Error("reconnect err")
+						} else {
+							logrus.WithError(err).Info("reconnect ok")
+						}
+						continue
 					} else {
 						break
 					}
 				}
 			} else if err == io.EOF {
-				logrus.WithError(err).Debug("a.disconnect_error(err)")
+				logrus.WithError(err).Debug("a.disconnect_error(err)2")
 				a.disconnect_error(err)
 				if a.worker.agentAutoReconnect {
 					time.Sleep(a.worker.agentAutoReconnectWaitTime)
+					err = a.reconnect()
+					if err != nil {
+						logrus.WithError(err).Error("reconnect err")
+					} else {
+						logrus.WithError(err).Info("reconnect ok")
+					}
+					continue
 				} else {
 					break
 				}
@@ -176,9 +190,10 @@ func (a *agent) PreSleep() {
 func (a *agent) reconnect() error {
 	a.Lock()
 	defer a.Unlock()
-	conn, err := net.Dial(a.net, a.addr)
+	conn, err := net.DialTimeout(a.net, a.addr, a.worker.agentConnectTimeOut)
 	if err != nil {
-		return err
+		time.Sleep(a.worker.agentAutoReconnectWaitTime)
+		return a.reconnect()
 	}
 	a.conn = conn
 	a.rw = bufio.NewReadWriter(bufio.NewReader(a.conn),
