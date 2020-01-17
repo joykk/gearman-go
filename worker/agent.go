@@ -63,35 +63,35 @@ func (a *agent) work() {
 				if opErr.Temporary() {
 					continue
 				} else {
-					logrus.WithError(err).Debug("a.disconnect_error(err)1")
-					a.disconnect_error(err)
-					// else - we're probably dc'ing due to a Close()
+					logrus.WithError(err).WithField("addr", a.addr).Debug("a.disconnect_error(err)1")
 					if a.worker.agentAutoReconnect {
 						time.Sleep(a.worker.agentAutoReconnectWaitTime)
 						err = a.reconnect()
 						if err != nil {
-							logrus.WithError(err).Error("reconnect err")
+							logrus.WithError(err).WithField("agentlen", len(a.worker.agents)).Error("reconnect err")
 						} else {
-							logrus.WithError(err).Info("reconnect ok")
+							logrus.WithError(err).WithField("agentlen", len(a.worker.agents)).Info("reconnect ok")
 						}
-						continue
+						return
 					} else {
+						// else - we're probably dc'ing due to a Close()
+						a.disconnect_error(err)
 						break
 					}
 				}
 			} else if err == io.EOF {
-				logrus.WithError(err).Debug("a.disconnect_error(err)2")
-				a.disconnect_error(err)
+				logrus.WithError(err).WithField("addr", a.addr).Debug("a.disconnect_error(err)2")
 				if a.worker.agentAutoReconnect {
 					time.Sleep(a.worker.agentAutoReconnectWaitTime)
 					err = a.reconnect()
 					if err != nil {
-						logrus.WithError(err).Error("reconnect err")
+						logrus.WithError(err).WithField("agentlen", len(a.worker.agents)).Error("reconnect err")
 					} else {
-						logrus.WithError(err).Info("reconnect ok")
+						logrus.WithError(err).WithField("agentlen", len(a.worker.agents)).Info("reconnect ok")
 					}
-					continue
+					return
 				} else {
+					a.disconnect_error(err)
 					break
 				}
 			}
@@ -148,7 +148,6 @@ func (a *agent) work() {
 func (a *agent) disconnect_error(err error) {
 	a.Lock()
 	defer a.Unlock()
-
 	if a.conn != nil {
 		err = &WorkerDisconnectError{
 			err:   err,
@@ -193,6 +192,7 @@ func (a *agent) reconnect() error {
 	conn, err := net.DialTimeout(a.net, a.addr, a.worker.agentConnectTimeOut)
 	if err != nil {
 		time.Sleep(a.worker.agentAutoReconnectWaitTime)
+		logrus.WithField("func", "reconnect").WithField("DialTimeout", err).Error("err")
 		return a.reconnect()
 	}
 	a.conn = conn
