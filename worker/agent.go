@@ -82,12 +82,15 @@ func (a *agent) work() {
 			} else if err == io.EOF {
 				logrus.WithError(err).WithField("addr", a.addr).Debug("a.disconnect_error(err)2")
 				if a.worker.agentAutoReconnect {
-					time.Sleep(a.worker.agentAutoReconnectWaitTime)
-					err = a.reconnect()
-					if err != nil {
-						logrus.WithError(err).WithField("agentlen", len(a.worker.agents)).Error("reconnect err")
-					} else {
-						logrus.WithError(err).WithField("agentlen", len(a.worker.agents)).Info("reconnect ok")
+					for i := 0; i < a.worker.agentAutoReconnectTime; i++ {
+						time.Sleep(a.worker.agentAutoReconnectWaitTime)
+						err = a.reconnect()
+						if err != nil {
+							logrus.WithError(err).WithField("agentlen", len(a.worker.agents)).WithField("count", i).Error("reconnect err")
+						} else {
+							logrus.WithError(err).WithField("agentlen", len(a.worker.agents)).WithField("count", i).Info("reconnect ok")
+							return
+						}
 					}
 					return
 				} else {

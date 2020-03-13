@@ -21,7 +21,8 @@ type Worker struct {
 	agents                     []*agent
 	agentConnectTimeOut        time.Duration
 	agentAutoReconnect         bool
-	agentAutoReconnectWaitTime time.Duration //自动重启等待时间
+	agentAutoReconnectWaitTime time.Duration //自动重连等待时间
+	agentAutoReconnectTime     int           //自动重连次数
 	funcs                      jobFuncs
 	in                         chan *inPack
 	running                    bool
@@ -47,6 +48,7 @@ func New(limit int) (worker *Worker) {
 		in:                         make(chan *inPack, queueSize),
 		agentConnectTimeOut:        time.Second * 10,
 		agentAutoReconnectWaitTime: time.Second * 10,
+		agentAutoReconnectTime:     3,
 	}
 	if limit != Unlimited {
 		worker.limit = make(chan bool, limit-1)
@@ -60,6 +62,9 @@ func (worker *Worker) SetAgentConnectTimeOut(t time.Duration) {
 
 func (worker *Worker) SetAgentAutoReconnectWaitTime(t time.Duration) {
 	worker.agentAutoReconnectWaitTime = t
+}
+func (worker *Worker) SetAgentAutoReconnectTime(number int) {
+	worker.agentAutoReconnectTime = number
 }
 
 func (worker *Worker) SetAgentAutoReconnect(b bool) {
