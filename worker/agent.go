@@ -213,9 +213,9 @@ func (a *agent) reconnect() error {
 	defer a.Unlock()
 	conn, err := net.DialTimeout(a.net, a.addr, a.worker.agentConnectTimeOut)
 	if err != nil {
-		time.Sleep(a.worker.agentAutoReconnectWaitTime)
 		logrus.WithField("func", "reconnect").WithField("DialTimeout", err).Error("err")
-		return a.reconnect()
+		time.Sleep(a.worker.agentAutoReconnectWaitTime)
+		return err
 	}
 	a.conn = conn
 	a.rw = bufio.NewReadWriter(bufio.NewReader(a.conn),
