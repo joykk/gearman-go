@@ -65,12 +65,23 @@ func (a *agent) work() {
 				} else {
 					logrus.WithError(err).WithField("addr", a.addr).Debug("a.disconnect_error(err)1")
 					if a.worker.agentAutoReconnect {
-						time.Sleep(a.worker.agentAutoReconnectWaitTime)
-						err = a.reconnect()
-						if err != nil {
-							logrus.WithError(err).WithField("agentlen", len(a.worker.agents)).Error("reconnect err")
-						} else {
-							logrus.WithError(err).WithField("agentlen", len(a.worker.agents)).Info("reconnect ok")
+						for i := 0; i < a.worker.agentAutoReconnectTime; i++ {
+							time.Sleep(a.worker.agentAutoReconnectWaitTime)
+							err = a.reconnect()
+							if err != nil {
+								logrus.WithError(err).WithFields(logrus.Fields{
+									"agentlen": len(a.worker.agents),
+									"count":    i,
+									"type":     "(err)1",
+								}).Error("reconnect err")
+							} else {
+								logrus.WithError(err).WithFields(logrus.Fields{
+									"agentlen": len(a.worker.agents),
+									"count":    i,
+									"type":     "(err)1",
+								}).Error("reconnect ok")
+								return
+							}
 						}
 						return
 					} else {
@@ -86,9 +97,17 @@ func (a *agent) work() {
 						time.Sleep(a.worker.agentAutoReconnectWaitTime)
 						err = a.reconnect()
 						if err != nil {
-							logrus.WithError(err).WithField("agentlen", len(a.worker.agents)).WithField("count", i).Error("reconnect err")
+							logrus.WithError(err).WithFields(logrus.Fields{
+								"agentlen": len(a.worker.agents),
+								"count":    i,
+								"type":     "(err)2",
+							}).Error("reconnect err")
 						} else {
-							logrus.WithError(err).WithField("agentlen", len(a.worker.agents)).WithField("count", i).Info("reconnect ok")
+							logrus.WithError(err).WithFields(logrus.Fields{
+								"agentlen": len(a.worker.agents),
+								"count":    i,
+								"type":     "(err)2",
+							}).Error("reconnect ok")
 							return
 						}
 					}
