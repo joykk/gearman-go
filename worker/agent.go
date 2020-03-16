@@ -214,7 +214,6 @@ func (a *agent) reconnect() error {
 	conn, err := net.DialTimeout(a.net, a.addr, a.worker.agentConnectTimeOut)
 	if err != nil {
 		logrus.WithField("func", "reconnect").WithField("DialTimeout", err).Error("err")
-		time.Sleep(a.worker.agentAutoReconnectWaitTime)
 		return err
 	}
 	a.conn = conn
